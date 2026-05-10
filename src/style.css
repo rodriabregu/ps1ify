@@ -202,3 +202,67 @@ input[type="range"] {
 /* ── Fog sub-controls ── */
 .fog-controls { margin-top: 6px; }
 .fog-controls.hidden { display: none; }
+
+/* ── Lighting section label ── */
+.control-section-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin: 10px 0 4px;
+  text-transform: uppercase;
+}
+
+/* ── Color picker ── */
+.color-picker {
+  width: 28px;
+  height: 18px;
+  border: 1px solid var(--border);
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+/* ── Export section ── */
+.export-group { border-bottom: none; }
+
+.export-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.export-btn {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.export-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.export-btn:disabled {
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+.export-btn--secondary {
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+.export-btn--secondary:hover {
+  background: var(--border);
+  color: var(--text);
+}

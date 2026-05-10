@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js'
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js'
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
 import { SimplifyModifier } from 'three/addons/modifiers/SimplifyModifier.js'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
@@ -13,21 +15,30 @@ import {
 
 export interface PS1Settings {
   // Geometry
-  polygonReduction:  number   // 0–95 (% vertices to remove)
-  vertexWelding:     boolean  // fuse duplicate vertices before simplify
+  polygonReduction:  number
+  vertexWelding:     boolean
   // Hardware Quirks
-  vertexSnapping:    number   // 1–16: divisor on RT res (higher = more wobble)
-  dithering:         boolean  // Bayer 4×4 ordered dithering
-  fog:               boolean  // draw distance fog
-  fogNear:           number   // fog start distance
-  fogFar:            number   // fog end distance
+  vertexSnapping:    number
+  dithering:         boolean
+  fog:               boolean
+  fogNear:           number
+  fogFar:            number
   // Texture Mapping
-  textureResolution: number   // index 0–6 → [full,256,128,64,32,16,8]
-  colorDepth:        number   // 2–256 steps per channel
+  textureResolution: number
+  colorDepth:        number
   affineMapping:     boolean
   // Render
-  renderResolution:  number   // index 1–5 → [0.25,0.33,0.5,0.75,1.0]
+  renderResolution:  number
   flatShading:       boolean
+}
+
+export interface LightSettings {
+  ambientIntensity: number   // 0–2
+  ambientColor:     string   // hex string e.g. '#ffffff'
+  dirIntensity:     number   // 0–3
+  dirColor:         string
+  fillIntensity:    number   // 0–2
+  fillColor:        string
 }
 
 const TEXTURE_SIZES: (number | null)[] = [null, 256, 128, 64, 32, 16, 8]
@@ -44,6 +55,11 @@ export class PS1Viewer {
   private originalModel:    THREE.Group | null = null
   private currentMesh:      THREE.Object3D | null = null
   private originalTextures: Map<string, THREE.Texture> = new Map()
+
+  // Lights — kept as class properties so updateLighting() can reach them
+  private ambientLight: THREE.AmbientLight
+  private dirLight:     THREE.DirectionalLight
+  private fillLight:    THREE.DirectionalLight
 
   private renderTarget: THREE.WebGLRenderTarget
   private postScene:    THREE.Scene
@@ -69,13 +85,17 @@ export class PS1Viewer {
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.08
 
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.5))
-    const dir = new THREE.DirectionalLight(0xffffff, 1.5)
-    dir.position.set(3, 5, 3)
-    this.scene.add(dir)
-    const fill = new THREE.DirectionalLight(0x4466ff, 0.4)
-    fill.position.set(-3, 0, -3)
-    this.scene.add(fill)
+    // Lights
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+    this.scene.add(this.ambientLight)
+
+    this.dirLight = new THREE.DirectionalLight(0xffffff, 1.5)
+    this.dirLight.position.set(3, 5, 3)
+    this.scene.add(this.dirLight)
+
+    this.fillLight = new THREE.DirectionalLight(0x4466ff, 0.4)
+    this.fillLight.position.set(-3, 0, -3)
+    this.scene.add(this.fillLight)
 
     this.renderTarget = new THREE.WebGLRenderTarget(1, 1, {
       minFilter: THREE.NearestFilter,
@@ -118,7 +138,6 @@ export class PS1Viewer {
   updateSettings(partial: Partial<PS1Settings>): void {
     this.settings = { ...this.settings, ...partial }
 
-    // Geometry changes → full rebuild (welding must happen before simplify)
     const needsRebuild =
       partial.polygonReduction !== undefined ||
       partial.vertexWelding    !== undefined
@@ -128,7 +147,6 @@ export class PS1Viewer {
       return
     }
 
-    // Shader recompile or new textures needed
     const needsMaterialRebuild =
       partial.textureResolution !== undefined ||
       partial.flatShading       !== undefined ||
@@ -145,8 +163,72 @@ export class PS1Viewer {
       return
     }
 
-    // Uniforms only — cheapest path
     this.updateShaderUniforms()
+  }
+
+  updateLighting(partial: Partial<LightSettings>): void {
+    if (partial.ambientIntensity !== undefined)
+      this.ambientLight.intensity = partial.ambientIntensity
+    if (partial.ambientColor !== undefined)
+      this.ambientLight.color.set(partial.ambientColor)
+    if (partial.dirIntensity !== undefined)
+      this.dirLight.intensity = partial.dirIntensity
+    if (partial.dirColor !== undefined)
+      this.dirLight.color.set(partial.dirColor)
+    if (partial.fillIntensity !== undefined)
+      this.fillLight.intensity = partial.fillIntensity
+    if (partial.fillColor !== undefined)
+      this.fillLight.color.set(partial.fillColor)
+  }
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+
+  async exportGLB(): Promise<void> {
+    if (!this.currentMesh) return
+
+    // Wrap in a temporary scene so GLTFExporter gets the right matrix context
+    const exportScene = new THREE.Scene()
+    const clone = this.currentMesh.clone(true)
+    clone.updateWorldMatrix(true, true)
+    exportScene.add(clone)
+
+    const exporter = new GLTFExporter()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buffer = await (exporter as any).parseAsync(exportScene, { binary: true }) as ArrayBuffer
+    this.triggerDownload(new Blob([buffer], { type: 'model/gltf-binary' }), 'model-ps1.glb')
+  }
+
+  exportOBJ(): void {
+    if (!this.currentMesh) return
+    const exporter = new OBJExporter()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const str = (exporter as any).parse(this.currentMesh) as string
+    this.triggerDownload(new Blob([str], { type: 'text/plain' }), 'model-ps1.obj')
+  }
+
+  exportTexturePNG(): void {
+    if (!this.currentMesh) return
+
+    let canvas: HTMLCanvasElement | null = null
+    this.currentMesh.traverse(obj => {
+      if (canvas) return
+      const mesh = obj as THREE.Mesh
+      if (!mesh.isMesh) return
+      const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+      const std = mat as THREE.MeshStandardMaterial
+      if (std?.map?.image instanceof HTMLCanvasElement) {
+        canvas = std.map.image
+      }
+    })
+
+    if (!canvas) {
+      alert('No downscaled texture found. Lower the Texture Resolution slider first.')
+      return
+    }
+
+    ;(canvas as HTMLCanvasElement).toBlob((blob: Blob | null) => {
+      if (blob) this.triggerDownload(blob, 'texture-ps1.png')
+    }, 'image/png')
   }
 
   resize(width: number, height: number): void {
@@ -187,7 +269,6 @@ export class PS1Viewer {
     group.position.sub(center)
     group.scale.setScalar(2 / maxDim)
 
-    // Snapshot original textures keyed by texture.uuid (stable across clones)
     this.originalTextures.clear()
     group.traverse(obj => {
       if (!(obj as THREE.Mesh).isMesh) return
@@ -217,23 +298,20 @@ export class PS1Viewer {
       if (!(obj as THREE.Mesh).isMesh) return
       const mesh = obj as THREE.Mesh
 
-      // 1. Vertex welding — fuse duplicates before simplify for cleaner topology
       if (this.settings.vertexWelding) {
         try {
           mesh.geometry = mergeVertices(mesh.geometry, 1e-4)
           mesh.geometry.computeVertexNormals()
-        } catch { /* skip on degenerate geometry */ }
+        } catch { /* skip */ }
       }
 
-      // 2. Polygon reduction
       if (reduction > 0) {
         const modifier = new SimplifyModifier()
         const count    = mesh.geometry.attributes.position.count
         const remove   = Math.floor(count * reduction)
         if (remove > 0 && remove < count - 3) {
-          try {
-            mesh.geometry = modifier.modify(mesh.geometry, remove)
-          } catch { /* skip */ }
+          try { mesh.geometry = modifier.modify(mesh.geometry, remove) }
+          catch { /* skip */ }
         }
       }
     })
@@ -346,6 +424,13 @@ export class PS1Viewer {
     const w      = Math.floor(canvas.clientWidth  * scale)
     const h      = Math.floor(canvas.clientHeight * scale)
     this.renderTarget.setSize(Math.max(w, 1), Math.max(h, 1))
+  }
+
+  private triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob)
+    const a   = Object.assign(document.createElement('a'), { href: url, download: filename })
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // ── Render loop ─────────────────────────────────────────────────────────────

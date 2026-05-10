@@ -9,7 +9,7 @@
   <body>
     <header class="app-header">
       <span class="app-title">PS1 MODEL CONVERTER</span>
-      <span class="app-version">v0.2</span>
+      <span class="app-version">v0.3</span>
     </header>
 
     <main class="app-layout">
@@ -133,6 +133,44 @@
           <p class="control-desc">Sudden depth fog. Classic PS1 draw distance trick.</p>
         </section>
 
+        <!-- LIGHTING SETUP -->
+        <section class="control-group">
+          <h2 class="control-group__title">LIGHTING SETUP</h2>
+
+          <p class="control-section-label">Ambient</p>
+          <div class="control-row">
+            <label for="ambientIntensity">Intensity</label>
+            <span class="control-value" id="ambientIntensityValue">0.5</span>
+          </div>
+          <input type="range" id="ambientIntensity" min="0" max="2" value="0.5" step="0.05" />
+          <div class="control-row">
+            <label for="ambientColor">Color</label>
+            <input type="color" id="ambientColor" value="#ffffff" class="color-picker" />
+          </div>
+
+          <p class="control-section-label">Key Light</p>
+          <div class="control-row">
+            <label for="dirIntensity">Intensity</label>
+            <span class="control-value" id="dirIntensityValue">1.5</span>
+          </div>
+          <input type="range" id="dirIntensity" min="0" max="3" value="1.5" step="0.05" />
+          <div class="control-row">
+            <label for="dirColor">Color</label>
+            <input type="color" id="dirColor" value="#ffffff" class="color-picker" />
+          </div>
+
+          <p class="control-section-label">Fill Light</p>
+          <div class="control-row">
+            <label for="fillIntensity">Intensity</label>
+            <span class="control-value" id="fillIntensityValue">0.4</span>
+          </div>
+          <input type="range" id="fillIntensity" min="0" max="2" value="0.4" step="0.05" />
+          <div class="control-row">
+            <label for="fillColor">Color</label>
+            <input type="color" id="fillColor" value="#4466ff" class="color-picker" />
+          </div>
+        </section>
+
         <!-- RENDER -->
         <section class="control-group">
           <h2 class="control-group__title">RENDER</h2>
@@ -142,6 +180,17 @@
           </div>
           <input type="range" id="renderResolution" min="1" max="5" value="1" step="1" />
           <p class="control-desc">Scale of the render output. 0.25x ≈ 320×240.</p>
+        </section>
+
+        <!-- EXPORT -->
+        <section class="control-group export-group">
+          <h2 class="control-group__title">EXPORT</h2>
+          <p class="control-desc">Export the processed model with PS1 geometry and textures.</p>
+          <div class="export-buttons">
+            <button class="export-btn" id="exportGLB">EXPORT GLB</button>
+            <button class="export-btn" id="exportOBJ">EXPORT OBJ</button>
+            <button class="export-btn export-btn--secondary" id="exportPNG">TEXTURE PNG</button>
+          </div>
         </section>
 
       </aside>
