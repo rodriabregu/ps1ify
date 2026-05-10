@@ -198,3 +198,7 @@ input[type="range"] {
   transform: translateX(14px);
   background: var(--accent);
 }
+
+/* ── Fog sub-controls ── */
+.fog-controls { margin-top: 6px; }
+.fog-controls.hidden { display: none; }

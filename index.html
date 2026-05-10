@@ -9,7 +9,7 @@
   <body>
     <header class="app-header">
       <span class="app-title">PS1 MODEL CONVERTER</span>
-      <span class="app-version">v0.1</span>
+      <span class="app-version">v0.2</span>
     </header>
 
     <main class="app-layout">
@@ -18,7 +18,6 @@
         <div class="viewer-label">Model Viewer</div>
         <canvas id="canvas"></canvas>
 
-        <!-- Drop zone overlay (visible when no model loaded) -->
         <div class="drop-zone" id="dropZone">
           <div class="drop-zone__content">
             <p>DROP MODEL HERE</p>
@@ -34,8 +33,10 @@
       <!-- Controls -->
       <aside class="controls-panel">
 
+        <!-- GEOMETRY -->
         <section class="control-group">
           <h2 class="control-group__title">GEOMETRY</h2>
+
           <div class="control-row">
             <label for="polygonReduction">Polygon Reduction</label>
             <span class="control-value" id="polygonReductionValue">0%</span>
@@ -44,38 +45,53 @@
           <p class="control-desc">Decimates mesh. Removes vertices from the model.</p>
 
           <div class="control-row">
-            <label for="vertexSnapping">Vertex Snapping</label>
-            <span class="control-value" id="vertexSnappingValue">8</span>
+            <label class="toggle-label">
+              Vertex Welding
+              <input type="checkbox" id="vertexWelding" />
+              <span class="toggle"></span>
+            </label>
           </div>
-          <input type="range" id="vertexSnapping" min="1" max="16" value="1" step="1" />
-          <p class="control-desc">Divides snap grid. Higher = coarser grid = more wobble.</p>
+          <p class="control-desc">Fuses nearby vertices before reduction. Requires Polygon Reduction > 0.</p>
         </section>
 
+        <!-- TEXTURE MAPPING -->
         <section class="control-group">
-          <h2 class="control-group__title">TEXTURE</h2>
+          <h2 class="control-group__title">TEXTURE MAPPING</h2>
+
           <div class="control-row">
             <label for="textureResolution">Texture Resolution</label>
-            <span class="control-value" id="textureResolutionValue">64px</span>
+            <span class="control-value" id="textureResolutionValue">full</span>
           </div>
           <input type="range" id="textureResolution" min="0" max="6" value="0" step="1" />
           <p class="control-desc">Downscales mapped textures to look pixelated.</p>
 
           <div class="control-row">
             <label for="colorDepth">Color Depth</label>
-            <span class="control-value" id="colorDepthValue">32</span>
+            <span class="control-value" id="colorDepthValue">256</span>
           </div>
-          <input type="range" id="colorDepth" min="2" max="256" value="32" step="1" />
+          <input type="range" id="colorDepth" min="2" max="256" value="256" step="1" />
           <p class="control-desc">Limits colors per channel. Reduces palette.</p>
+
+          <div class="control-row">
+            <label class="toggle-label">
+              Affine Mapping
+              <input type="checkbox" id="affineMapping" checked />
+              <span class="toggle"></span>
+            </label>
+          </div>
+          <p class="control-desc">Perspective-incorrect UVs. Classic PS1 texture warp.</p>
         </section>
 
+        <!-- HARDWARE QUIRKS -->
         <section class="control-group">
-          <h2 class="control-group__title">RENDER</h2>
+          <h2 class="control-group__title">HARDWARE QUIRKS</h2>
+
           <div class="control-row">
-            <label for="renderResolution">Render Resolution</label>
-            <span class="control-value" id="renderResolutionValue">0.25x</span>
+            <label for="vertexSnapping">Vertex Jitter</label>
+            <span class="control-value" id="vertexSnappingValue">off</span>
           </div>
-          <input type="range" id="renderResolution" min="1" max="5" value="1" step="1" />
-          <p class="control-desc">Scale of the render output. 0.25x = 320x240.</p>
+          <input type="range" id="vertexSnapping" min="1" max="16" value="1" step="1" />
+          <p class="control-desc">Snaps vertices to a coarser grid. Creates the PS1 wobble.</p>
 
           <div class="control-row">
             <label class="toggle-label">
@@ -84,13 +100,48 @@
               <span class="toggle"></span>
             </label>
           </div>
+          <p class="control-desc">Hard face normals. No smooth shading.</p>
+
           <div class="control-row">
             <label class="toggle-label">
-              Affine Mapping
-              <input type="checkbox" id="affineMapping" checked />
+              Dithering
+              <input type="checkbox" id="dithering" />
               <span class="toggle"></span>
             </label>
           </div>
+          <p class="control-desc">Bayer 4×4 ordered dithering. Simulates limited palette blending.</p>
+
+          <div class="control-row">
+            <label class="toggle-label">
+              Draw Distance Fog
+              <input type="checkbox" id="fog" />
+              <span class="toggle"></span>
+            </label>
+          </div>
+          <div id="fogControls" class="fog-controls hidden">
+            <div class="control-row">
+              <label for="fogNear">Near</label>
+              <span class="control-value" id="fogNearValue">2</span>
+            </div>
+            <input type="range" id="fogNear" min="0" max="20" value="2" step="0.5" />
+            <div class="control-row">
+              <label for="fogFar">Far</label>
+              <span class="control-value" id="fogFarValue">8</span>
+            </div>
+            <input type="range" id="fogFar" min="1" max="30" value="8" step="0.5" />
+          </div>
+          <p class="control-desc">Sudden depth fog. Classic PS1 draw distance trick.</p>
+        </section>
+
+        <!-- RENDER -->
+        <section class="control-group">
+          <h2 class="control-group__title">RENDER</h2>
+          <div class="control-row">
+            <label for="renderResolution">Resolution</label>
+            <span class="control-value" id="renderResolutionValue">0.25x (320p)</span>
+          </div>
+          <input type="range" id="renderResolution" min="1" max="5" value="1" step="1" />
+          <p class="control-desc">Scale of the render output. 0.25x ≈ 320×240.</p>
         </section>
 
       </aside>
