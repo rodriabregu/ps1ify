@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PS1 MODEL CONVERTER</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <span class="app-title">PS1 MODEL CONVERTER</span>
+      <span class="app-version">v0.1</span>
+    </header>
+
+    <main class="app-layout">
+      <!-- Viewer -->
+      <section class="viewer-panel">
+        <div class="viewer-label">Model Viewer</div>
+        <canvas id="canvas"></canvas>
+
+        <!-- Drop zone overlay (visible when no model loaded) -->
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-zone__content">
+            <p>DROP MODEL HERE</p>
+            <p class="drop-zone__sub">GLB or OBJ</p>
+            <label class="drop-zone__btn">
+              BROWSE FILE
+              <input type="file" id="fileInput" accept=".glb,.obj" hidden />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controls -->
+      <aside class="controls-panel">
+
+        <section class="control-group">
+          <h2 class="control-group__title">GEOMETRY</h2>
+          <div class="control-row">
+            <label for="polygonReduction">Polygon Reduction</label>
+            <span class="control-value" id="polygonReductionValue">0%</span>
+          </div>
+          <input type="range" id="polygonReduction" min="0" max="95" value="0" step="1" />
+          <p class="control-desc">Decimates mesh. Removes vertices from the model.</p>
+
+          <div class="control-row">
+            <label for="vertexSnapping">Vertex Snapping</label>
+            <span class="control-value" id="vertexSnappingValue">8</span>
+          </div>
+          <input type="range" id="vertexSnapping" min="1" max="16" value="1" step="1" />
+          <p class="control-desc">Divides snap grid. Higher = coarser grid = more wobble.</p>
+        </section>
+
+        <section class="control-group">
+          <h2 class="control-group__title">TEXTURE</h2>
+          <div class="control-row">
+            <label for="textureResolution">Texture Resolution</label>
+            <span class="control-value" id="textureResolutionValue">64px</span>
+          </div>
+          <input type="range" id="textureResolution" min="0" max="6" value="0" step="1" />
+          <p class="control-desc">Downscales mapped textures to look pixelated.</p>
+
+          <div class="control-row">
+            <label for="colorDepth">Color Depth</label>
+            <span class="control-value" id="colorDepthValue">32</span>
+          </div>
+          <input type="range" id="colorDepth" min="2" max="256" value="32" step="1" />
+          <p class="control-desc">Limits colors per channel. Reduces palette.</p>
+        </section>
+
+        <section class="control-group">
+          <h2 class="control-group__title">RENDER</h2>
+          <div class="control-row">
+            <label for="renderResolution">Render Resolution</label>
+            <span class="control-value" id="renderResolutionValue">0.25x</span>
+          </div>
+          <input type="range" id="renderResolution" min="1" max="5" value="1" step="1" />
+          <p class="control-desc">Scale of the render output. 0.25x = 320x240.</p>
+
+          <div class="control-row">
+            <label class="toggle-label">
+              Flat Shading
+              <input type="checkbox" id="flatShading" checked />
+              <span class="toggle"></span>
+            </label>
+          </div>
+          <div class="control-row">
+            <label class="toggle-label">
+              Affine Mapping
+              <input type="checkbox" id="affineMapping" checked />
+              <span class="toggle"></span>
+            </label>
+          </div>
+        </section>
+
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
