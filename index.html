@@ -9,7 +9,10 @@
   <body>
     <header class="app-header">
       <span class="app-title">PS1 MODEL CONVERTER</span>
-      <span class="app-version">v0.3</span>
+      <div class="app-header__right">
+        <button class="reset-btn" id="resetSettings" title="Reset all settings to default">RESET</button>
+        <span class="app-version">v0.3</span>
+      </div>
     </header>
 
     <main class="app-layout">
@@ -17,6 +20,14 @@
       <section class="viewer-panel">
         <div class="viewer-label">Model Viewer</div>
         <canvas id="canvas"></canvas>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+          <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-msg" id="loadingMsg">LOADING...</p>
+          </div>
+        </div>
 
         <div class="drop-zone" id="dropZone">
           <div class="drop-zone__content">
@@ -180,6 +191,24 @@
           </div>
           <input type="range" id="renderResolution" min="1" max="5" value="1" step="1" />
           <p class="control-desc">Scale of the render output. 0.25x ≈ 320×240.</p>
+
+          <div class="control-row">
+            <label class="toggle-label">
+              Auto Rotate
+              <input type="checkbox" id="autoRotate" />
+              <span class="toggle"></span>
+            </label>
+          </div>
+          <p class="control-desc">Spins the model automatically.</p>
+
+          <div class="control-row">
+            <label class="toggle-label">
+              Wireframe
+              <input type="checkbox" id="wireframe" />
+              <span class="toggle"></span>
+            </label>
+          </div>
+          <p class="control-desc">Overlay polygon edges. Useful with Polygon Reduction.</p>
         </section>
 
         <!-- EXPORT -->

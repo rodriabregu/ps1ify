@@ -4,9 +4,12 @@ import type { PS1Settings } from './viewer'
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
-const canvas    = document.getElementById('canvas') as HTMLCanvasElement
-const dropZone  = document.getElementById('dropZone') as HTMLDivElement
-const fileInput = document.getElementById('fileInput') as HTMLInputElement
+const canvas         = document.getElementById('canvas') as HTMLCanvasElement
+const dropZone       = document.getElementById('dropZone') as HTMLDivElement
+const fileInput      = document.getElementById('fileInput') as HTMLInputElement
+const loadingOverlay = document.getElementById('loadingOverlay') as HTMLDivElement
+const loadingMsg     = document.getElementById('loadingMsg') as HTMLParagraphElement
+const btnReset       = document.getElementById('resetSettings') as HTMLButtonElement
 
 // Geometry
 const sliderPolygon  = document.getElementById('polygonReduction') as HTMLInputElement
@@ -31,23 +34,25 @@ const inputDirColor          = document.getElementById('dirColor') as HTMLInputE
 const sliderFillIntensity    = document.getElementById('fillIntensity') as HTMLInputElement
 const inputFillColor         = document.getElementById('fillColor') as HTMLInputElement
 // Render
-const sliderRender = document.getElementById('renderResolution') as HTMLInputElement
+const sliderRender   = document.getElementById('renderResolution') as HTMLInputElement
+const checkAutoRotate = document.getElementById('autoRotate') as HTMLInputElement
+const checkWireframe  = document.getElementById('wireframe') as HTMLInputElement
 // Export
 const btnExportGLB = document.getElementById('exportGLB') as HTMLButtonElement
 const btnExportOBJ = document.getElementById('exportOBJ') as HTMLButtonElement
 const btnExportPNG = document.getElementById('exportPNG') as HTMLButtonElement
 
 // Value displays
-const valPolygon         = document.getElementById('polygonReductionValue')!
-const valTexture         = document.getElementById('textureResolutionValue')!
-const valColor           = document.getElementById('colorDepthValue')!
-const valSnapping        = document.getElementById('vertexSnappingValue')!
-const valFogNear         = document.getElementById('fogNearValue')!
-const valFogFar          = document.getElementById('fogFarValue')!
+const valPolygon          = document.getElementById('polygonReductionValue')!
+const valTexture          = document.getElementById('textureResolutionValue')!
+const valColor            = document.getElementById('colorDepthValue')!
+const valSnapping         = document.getElementById('vertexSnappingValue')!
+const valFogNear          = document.getElementById('fogNearValue')!
+const valFogFar           = document.getElementById('fogFarValue')!
 const valAmbientIntensity = document.getElementById('ambientIntensityValue')!
-const valDirIntensity    = document.getElementById('dirIntensityValue')!
-const valFillIntensity   = document.getElementById('fillIntensityValue')!
-const valRender          = document.getElementById('renderResolutionValue')!
+const valDirIntensity     = document.getElementById('dirIntensityValue')!
+const valFillIntensity    = document.getElementById('fillIntensityValue')!
+const valRender           = document.getElementById('renderResolutionValue')!
 
 // ── Labels ────────────────────────────────────────────────────────────────────
 
@@ -55,9 +60,9 @@ const TEXTURE_LABELS = ['full', '256px', '128px', '64px', '32px', '16px', '8px']
 const RENDER_LABELS  = ['0.25x (320p)', '0.33x', '0.50x', '0.75x', '1.00x']
 const snapLabel      = (v: number) => v === 1 ? 'off' : `÷${v}`
 
-// ── Initial settings ──────────────────────────────────────────────────────────
+// ── Default settings (source of truth for reset) ──────────────────────────────
 
-const initialSettings: PS1Settings = {
+const DEFAULT_SETTINGS: PS1Settings = {
   polygonReduction:  0,
   vertexWelding:     false,
   vertexSnapping:    1,
@@ -74,33 +79,42 @@ const initialSettings: PS1Settings = {
 
 // ── Viewer ────────────────────────────────────────────────────────────────────
 
-const viewer = new PS1Viewer(canvas, initialSettings)
+const viewer = new PS1Viewer(canvas, { ...DEFAULT_SETTINGS })
 
-// Sync initial display values
-valPolygon.textContent          = `${initialSettings.polygonReduction}%`
-valTexture.textContent          = TEXTURE_LABELS[initialSettings.textureResolution]
-valColor.textContent            = `${initialSettings.colorDepth}`
-valSnapping.textContent         = snapLabel(initialSettings.vertexSnapping)
-valFogNear.textContent          = `${initialSettings.fogNear}`
-valFogFar.textContent           = `${initialSettings.fogFar}`
-valAmbientIntensity.textContent = sliderAmbientIntensity.value
-valDirIntensity.textContent     = sliderDirIntensity.value
-valFillIntensity.textContent    = sliderFillIntensity.value
-valRender.textContent           = RENDER_LABELS[initialSettings.renderResolution - 1]
-
-// Export buttons disabled until a model is loaded
+syncUIToSettings(DEFAULT_SETTINGS)
 setExportEnabled(false)
+
+// ── Loading helpers ───────────────────────────────────────────────────────────
+
+function showLoading(msg = 'LOADING...') {
+  loadingMsg.textContent = msg
+  loadingOverlay.classList.remove('hidden')
+}
+
+function hideLoading() {
+  loadingOverlay.classList.add('hidden')
+}
 
 // ── Geometry ──────────────────────────────────────────────────────────────────
 
-sliderPolygon.addEventListener('input', () => {
+sliderPolygon.addEventListener('change', async () => {
+  // Use 'change' (not 'input') so we only process when the user releases the slider
   const v = Number(sliderPolygon.value)
   valPolygon.textContent = `${v}%`
-  viewer.updateSettings({ polygonReduction: v })
+  showLoading('PROCESSING...')
+  await viewer.updateSettingsAsync({ polygonReduction: v })
+  hideLoading()
 })
 
-checkWelding.addEventListener('change', () => {
-  viewer.updateSettings({ vertexWelding: checkWelding.checked })
+// Update the display value while dragging, but don't process yet
+sliderPolygon.addEventListener('input', () => {
+  valPolygon.textContent = `${sliderPolygon.value}%`
+})
+
+checkWelding.addEventListener('change', async () => {
+  showLoading('PROCESSING...')
+  await viewer.updateSettingsAsync({ vertexWelding: checkWelding.checked })
+  hideLoading()
 })
 
 // ── Texture Mapping ───────────────────────────────────────────────────────────
@@ -194,6 +208,21 @@ sliderRender.addEventListener('input', () => {
   viewer.updateSettings({ renderResolution: v })
 })
 
+checkAutoRotate.addEventListener('change', () => {
+  viewer.setAutoRotate(checkAutoRotate.checked)
+})
+
+checkWireframe.addEventListener('change', () => {
+  viewer.setWireframe(checkWireframe.checked)
+})
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+
+btnReset.addEventListener('click', () => {
+  viewer.updateSettings({ ...DEFAULT_SETTINGS })
+  syncUIToSettings(DEFAULT_SETTINGS)
+})
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 btnExportGLB.addEventListener('click', async () => {
@@ -207,13 +236,8 @@ btnExportGLB.addEventListener('click', async () => {
   }
 })
 
-btnExportOBJ.addEventListener('click', () => {
-  viewer.exportOBJ()
-})
-
-btnExportPNG.addEventListener('click', () => {
-  viewer.exportTexturePNG()
-})
+btnExportOBJ.addEventListener('click', () => viewer.exportOBJ())
+btnExportPNG.addEventListener('click', () => viewer.exportTexturePNG())
 
 // ── File loading ──────────────────────────────────────────────────────────────
 
@@ -225,8 +249,17 @@ async function loadFile(file: File) {
     return
   }
   dropZone.classList.add('hidden')
-  await viewer.loadFile(file)
-  setExportEnabled(true)
+  showLoading('LOADING...')
+  try {
+    await viewer.loadFile(file)
+    setExportEnabled(true)
+  } catch (e) {
+    console.error(e)
+    alert('Failed to load model. Check the console for details.')
+    dropZone.classList.remove('hidden')
+  } finally {
+    hideLoading()
+  }
 }
 
 fileInput.addEventListener('change', () => {
@@ -258,6 +291,38 @@ function setExportEnabled(enabled: boolean) {
   btnExportGLB.disabled = !enabled
   btnExportOBJ.disabled = !enabled
   btnExportPNG.disabled = !enabled
+}
+
+/** Sync all UI controls to match a given settings object */
+function syncUIToSettings(s: PS1Settings) {
+  sliderPolygon.value        = String(s.polygonReduction)
+  valPolygon.textContent     = `${s.polygonReduction}%`
+  checkWelding.checked       = s.vertexWelding
+
+  sliderTexture.value        = String(s.textureResolution)
+  valTexture.textContent     = TEXTURE_LABELS[s.textureResolution]
+  sliderColor.value          = String(s.colorDepth)
+  valColor.textContent       = String(s.colorDepth)
+  checkAffine.checked        = s.affineMapping
+
+  sliderSnapping.value       = String(s.vertexSnapping)
+  valSnapping.textContent    = snapLabel(s.vertexSnapping)
+  checkFlat.checked          = s.flatShading
+  checkDithering.checked     = s.dithering
+  checkFog.checked           = s.fog
+  fogControls.classList.toggle('hidden', !s.fog)
+  sliderFogNear.value        = String(s.fogNear)
+  valFogNear.textContent     = String(s.fogNear)
+  sliderFogFar.value         = String(s.fogFar)
+  valFogFar.textContent      = String(s.fogFar)
+
+  sliderRender.value         = String(s.renderResolution)
+  valRender.textContent      = RENDER_LABELS[s.renderResolution - 1]
+
+  checkAutoRotate.checked = false
+  viewer.setAutoRotate(false)
+  checkWireframe.checked  = false
+  viewer.setWireframe(false)
 }
 
 // ── Resize ────────────────────────────────────────────────────────────────────

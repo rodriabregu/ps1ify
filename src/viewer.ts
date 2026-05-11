@@ -65,6 +65,9 @@ export class PS1Viewer {
   private postScene:    THREE.Scene
   private postCamera:   THREE.OrthographicCamera
 
+  // Auto-rotate & wireframe state
+  private wireframeGroup: THREE.Group | null = null
+
   constructor(canvas: HTMLCanvasElement, settings: PS1Settings) {
     this.settings = { ...settings }
 
@@ -82,8 +85,10 @@ export class PS1Viewer {
     this.camera.position.set(0, 1.5, 4)
 
     this.controls = new OrbitControls(this.camera, canvas)
-    this.controls.enableDamping = true
-    this.controls.dampingFactor = 0.08
+    this.controls.enableDamping    = true
+    this.controls.dampingFactor    = 0.08
+    this.controls.autoRotate       = false
+    this.controls.autoRotateSpeed  = 2.0
 
     // Lights
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
@@ -147,6 +152,29 @@ export class PS1Viewer {
       return
     }
 
+    this._applyNonRebuildSettings(partial)
+  }
+
+  // Async variant — lets the caller show a loading state before the heavy rebuild
+  async updateSettingsAsync(partial: Partial<PS1Settings>): Promise<void> {
+    this.settings = { ...this.settings, ...partial }
+
+    const needsRebuild =
+      partial.polygonReduction !== undefined ||
+      partial.vertexWelding    !== undefined
+
+    if (needsRebuild && this.originalModel) {
+      // Yield to the browser so it can paint the loading overlay first
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      this.rebuildMesh()
+      return
+    }
+
+    this._applyNonRebuildSettings(partial)
+  }
+
+  private _applyNonRebuildSettings(partial: Partial<PS1Settings>): void {
+
     const needsMaterialRebuild =
       partial.textureResolution !== undefined ||
       partial.flatShading       !== undefined ||
@@ -179,6 +207,48 @@ export class PS1Viewer {
       this.fillLight.intensity = partial.fillIntensity
     if (partial.fillColor !== undefined)
       this.fillLight.color.set(partial.fillColor)
+  }
+
+  setAutoRotate(enabled: boolean): void {
+    this.controls.autoRotate = enabled
+  }
+
+  setWireframe(enabled: boolean): void {
+    // Remove existing wireframe group
+    if (this.wireframeGroup) {
+      this.scene.remove(this.wireframeGroup)
+      this.wireframeGroup.traverse(obj => {
+        if ((obj as THREE.LineSegments).isLineSegments) {
+          (obj as THREE.LineSegments).geometry.dispose()
+          ;((obj as THREE.LineSegments).material as THREE.Material).dispose()
+        }
+      })
+      this.wireframeGroup = null
+    }
+
+    if (!enabled || !this.currentMesh) return
+
+    const group = new THREE.Group()
+    const wireMat = new THREE.LineBasicMaterial({
+      color:       0x00ff88,
+      transparent: true,
+      opacity:     0.25,
+      depthTest:   true,
+    })
+
+    this.currentMesh.traverse(obj => {
+      if (!(obj as THREE.Mesh).isMesh) return
+      const mesh = obj as THREE.Mesh
+      const wireGeo  = new THREE.WireframeGeometry(mesh.geometry)
+      const lines    = new THREE.LineSegments(wireGeo, wireMat)
+      // Match the mesh's world transform
+      lines.matrix.copy(mesh.matrixWorld)
+      lines.matrixAutoUpdate = false
+      group.add(lines)
+    })
+
+    this.wireframeGroup = group
+    this.scene.add(group)
   }
 
   // ── Export ──────────────────────────────────────────────────────────────────
@@ -319,6 +389,9 @@ export class PS1Viewer {
     this.currentMesh = clone
     this.scene.add(clone)
     this.applyPS1Materials()
+
+    // Rebuild wireframe if it was active
+    if (this.wireframeGroup) this.setWireframe(true)
   }
 
   // ── PS1 materials ───────────────────────────────────────────────────────────
